@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Top Up Pulsa - Terminal Style</title>
+    <style>
+        body {
+            font-family: 'Courier New', Courier, monospace;
+            background-color: #000;
+            color: #0f0;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .terminal {
+            width: 80%;
+            max-width: 600px;
+            height: 500px;
+            background-color: #111;
+            border: 2px solid #0f0;
+            padding: 20px;
+            overflow-y: auto;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end;
+            border-radius: 7px;
+        }
+
+        .terminal p {
+            margin: 5px 0;
+            animation: fadeIn 0.5s ease-in-out;
+        }
+
+        .terminal input {
+            width: 100%;
+            background-color: #222;
+            border: none;
+            color: #0f0;
+            font-size: 16px;
+            outline: none;
+            padding: 10px;
+            box-sizing: border-box;
+            animation: fadeInInput 1s ease-in-out;
+        }
+
+        .terminal input::placeholder {
+            color: #666;
+        }
+
+        .processing {
+            color: #0f0;
+            animation: blink 1s step-start 0s infinite;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            width: 100%;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: #fff;
+            color: #000;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+            text-align: center;
+            animation: popUp 0.5s ease-in-out;
+        }
+
+        .qr-container {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    margin-top: 20px;
+}
+
+.modal img {
+    width: 200px;
+    height: 200px;
+    margin: 10px 0;
+}
+
+
+        .modal button {
+            background-color: #0f0;
+            border: none;
+            padding: 10px;
+            margin-top: 10px;
+            cursor: pointer;
+            font-size: 16px;
+            width: 100%;
+            border-radius: 5px;
+        }
+
+        .modal button:hover {
+            background-color: #27ae60;
+        }
+
+        @keyframes fadeIn {
+            0% {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            100% {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes fadeInInput {
+            0% {
+                opacity: 0;
+            }
+            100% {
+                opacity: 1;
+            }
+        }
+
+        @keyframes popUp {
+            0% {
+                transform: scale(0.8) translate(-50%, -50%);
+            }
+            100% {
+                transform: scale(1) translate(-50%, -50%);
+            }
+        }
+
+        @keyframes blink {
+            50% {
+                opacity: 0;
+            }
+        }
+        footer {
+    position: fixed;
+    bottom: 0;
+    width: 100%;
+    background-color: #111;
+    color: #0f0;
+    text-align: center;
+    padding: 10px 0;
+    font-size: 14px;
+    border-top: 1px solid #0f0;
+}
+
+header {
+    text-align: center;
+    background-color: #111;
+    color: #0f0;
+    padding: 20px 0;
+    border-bottom: 2px solid #0f0;
+    width: 100%;
+    position: fixed;
+    top: 0;
+    left: 0;
+}
+
+header h1 {
+    margin: 0;
+    font-size: 24px;
+}
+
+    </style>
+</head>
+<header>
+    <h1>Layanan Top Up Pulsa</h1>
+    
+</header>
+
+<body>
+    <div class="terminal" id="terminal">
+        <p>Selamat datang di layanan top up pulsa. Ketik <b>/help</b> untuk melihat perintah yang tersedia.</p>
+        <div>
+            <input type="text" id="terminal-input" placeholder="Ketik perintah..." autofocus>
+        </div>
+        
+    </div>
+    
+ 
+
+    <!-- Modal Pop-Up -->
+    <div class="modal" id="modal">
+        <h2>Informasi Transaksi</h2>
+        <p><strong>Nama:</strong> <span id="customer-name"></span></p>
+        <p><strong>Nomor HP:</strong> <span id="phone-number"></span></p>
+        <p><strong>Nominal Pulsa:</strong> <span id="pulsa-amount"></span></p>
+        <p><strong>Metode Pembayaran:</strong> <span id="payment-method"></span></p>
+        <p><strong>Total Pembayaran:</strong> <span id="total-amount"></span></p>
+      <div id="qr-container" class="qr-container">
+    
+    <img src="bayar.png" alt="QR Code" id="qr-code" style="display: none;">
+    <p id="scan-text" style="display: none;">Scan untuk membayar: <br> Jangan Lupa Kirim Bukti pembayaran Ke No Wa Ini 083174042483</p>
+</div>
+        <button onclick="closeModal()">Tutup</button>
+        
+        
+       
+    </div>
+    
+<footer id="business-status">
+   
+</footer>
+
+   <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"> </script>
+<script>
+    (function () {
+        emailjs.init("UmiCTAyfH7769-kHs");
+    })();
+
+    const terminal = document.getElementById('terminal');
+    const inputField = document.getElementById('terminal-input');
+    let stage = 0; // Menentukan tahap interaksi
+    let selectedOperator = '';
+    let phoneNumber = '';
+    let selectedAmount = '';
+    let paymentMethod = '';
+    let customerName = '';
+
+    // Event listener untuk mendeteksi enter
+    inputField.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter') {
+            const command = inputField.value;
+            inputField.value = ''; // Reset input field
+            handleCommand(command);
+        }
+    });
+
+    function handleCommand(command) {
+        const paragraph = document.createElement('p');
+
+        if (command === '/help' && stage === 0) {
+            paragraph.innerHTML = `<b>/axis</b> - Top up Axis<br><b>/telkomsel</b> - Top up Telkomsel<br><b>/indosat</b> - Top up Indosat<br><b>/xl</b> - Top up XL<br><b>/tri</b> - Top up Tri`;
+            terminal.insertBefore(paragraph, inputField.parentElement);
+            stage = 0;
+        } else if (command === '/axis' && stage === 0) {
+            startTopUp(paragraph, 'Axis');
+        } else if (command === '/telkomsel' && stage === 0) {
+            startTopUp(paragraph, 'Telkomsel');
+        } else if (command === '/indosat' && stage === 0) {
+            startTopUp(paragraph, 'Indosat');
+        } else if (command === '/xl' && stage === 0) {
+            startTopUp(paragraph, 'XL');
+        } else if (command === '/tri' && stage === 0) {
+            startTopUp(paragraph, 'Tri');
+        } else if (stage === 1 && ['1', '2', '3', '4', '5', '6'].includes(command)) {
+            selectedAmount = convertOptionToAmount(command);
+            paragraph.innerHTML = `Anda memilih pulsa: Rp ${selectedAmount}. Masukkan nama Anda:`;
+            terminal.insertBefore(paragraph, inputField.parentElement);
+            stage = 2;
+        } else if (stage === 2) {
+            customerName = command;
+            paragraph.innerHTML = `Masukkan nomor HP Anda:`;
+            terminal.insertBefore(paragraph, inputField.parentElement);
+            stage = 3;
+        } else if (stage === 3) {
+            phoneNumber = command;
+            paragraph.innerHTML = `Pilih metode pembayaran:<br>1. Pembayaran Langsung<br>2. QR Code`;
+            terminal.insertBefore(paragraph, inputField.parentElement);
+            stage = 4;
+        } else if (stage === 4 && ['1', '2'].includes(command)) {
+            paymentMethod = command === '1' ? 'Pembayaran Langsung' : 'QR Code';
+            if (paymentMethod === 'Pembayaran Langsung') {
+                paragraph.innerHTML = `Anda memilih Pembayaran Langsung dengan biaya admin Rp 2.000. Memproses transaksi...`;
+            } else {
+                paragraph.innerHTML = `Anda memilih QR Code. Memproses transaksi...`;
+            }
+            terminal.insertBefore(paragraph, inputField.parentElement);
+            terminal.scrollTop = terminal.scrollHeight; // Scroll ke bawah terminal
+            processTopUp();
+        } else {
+            paragraph.innerHTML = `Perintah tidak dikenali. Ketik <b>/help</b> untuk bantuan.`;
+            terminal.insertBefore(paragraph, inputField.parentElement);
+            stage = 0;
+        }
+
+        terminal.scrollTop = terminal.scrollHeight; // Scroll ke bawah terminal
+    }
+
+    function startTopUp(paragraph, operator) {
+        paragraph.innerHTML = `Pilih nominal pulsa untuk ${operator}:<br>1. Rp 5.000<br>2. Rp 10.000<br>3. Rp 15.000<br>4. Rp 20.000<br>5. Rp 30.000<br>6. Rp 50.000`;
+        terminal.insertBefore(paragraph, inputField.parentElement);
+        stage = 1;
+        selectedOperator = operator;
+    }
+
+    function convertOptionToAmount(option) {
+        switch (option) {
+            case '1':
+                return '5.000';
+            case '2':
+                return '10.000';
+            case '3':
+                return '15.000';   
+            case '4':
+                return '20.000';
+            case '5':
+                return '30.000';    
+            case '6':
+                return '50.000';
+            default:
+                return '0';
+        }
+    }
+
+    function processTopUp() {
+        setTimeout(() => {
+            const paragraph = document.createElement('p');
+            const adminFee = 2000;
+            const totalAmount = parseInt(selectedAmount.replace('.', '')) + adminFee;
+
+            document.getElementById('customer-name').innerText = customerName;
+            document.getElementById('phone-number').innerText = phoneNumber;
+            document.getElementById('pulsa-amount').innerText = selectedAmount;
+            document.getElementById('payment-method').innerText = paymentMethod;
+            document.getElementById('total-amount').innerText = `Rp ${totalAmount.toLocaleString()}`;
+            
+            if (paymentMethod === 'QR Code') {
+                document.getElementById('qr-code').style.display = 'block';
+                document.getElementById('scan-text').style.display = 'block';
+            } else {
+                document.getElementById('qr-code').style.display = 'none';
+                document.getElementById('scan-text').style.display = 'none';
+            }
+
+            showModal();
+
+            paragraph.innerHTML = `Transaksi berhasil! Total pembayaran adalah Rp ${totalAmount.toLocaleString()}.`;
+            terminal.insertBefore(paragraph, inputField.parentElement);
+            terminal.scrollTop = terminal.scrollHeight;
+
+            sendEmail(customerName, phoneNumber, selectedAmount, paymentMethod, totalAmount);
+
+        }, 2000); 
+    }
+
+    function sendEmail(customerName, phoneNumber, selectedAmount, paymentMethod, totalAmount) {
+        const templateParams = {
+            customer_name: customerName,
+            phone_number: phoneNumber,
+            pulsa_amount: selectedAmount,
+            payment_method: paymentMethod,
+            total_amount: totalAmount.toLocaleString(),
+        };
+
+        emailjs.send('service_8akj8w5', 'template_1iw561h', templateParams)
+            .then((response) => {
+                console.log('SUCCESS!', response.status, response.text);
+            }, (error) => {
+                console.log('FAILED...', error);
+            });
+    }
+
+    function showModal() {
+        document.getElementById('modal').style.display = 'block';
+    }
+
+    function closeModal() {
+        document.getElementById('modal').style.display = 'none';
+        resetTerminal();
+        window.location.reload();
+    }
+
+    function resetTerminal() {
+        terminal.innerHTML = '<p>Selamat datang di layanan top up pulsa. Ketik <b>/help</b> untuk melihat perintah yang tersedia.</p>';
+        inputField.value = '';
+        stage = 0;
+        selectedOperator = '';
+        phoneNumber = '';
+        selectedAmount = '';
+        paymentMethod = '';
+        customerName = '';
+    }
+    
+    function checkOpenStatus() {
+        const now = new Date();
+        const currentHour = now.getHours();
+        const currentMinute = now.getMinutes();
+        const footer = document.createElement('footer');
+        footer.style.textAlign = 'center';
+        footer.style.marginTop = '20px';
+        footer.style.position = 'fixed';
+        footer.style.bottom = '0';
+        footer.style.width = '100%';
+        footer.style.backgroundColor = '#111';
+        footer.style.color = '#0f0';
+        footer.style.padding = '10px';
+        footer.style.fontSize = '14px';
+        footer.style.borderTop = '1px solid #0f0';
+
+        if (currentHour >= 7 && (currentHour < 22 || (currentHour === 22 && currentMinute === 0))) {
+            footer.innerHTML = 'Status: <strong>Buka</strong> 🥳';
+        } else {
+            footer.innerHTML = 'Status: <strong>Tutup</strong> 😴';
+        }
+
+        document.body.appendChild(footer);
+    }
+
+    window.onload = checkOpenStatus;
+
+</script>
+
+</body>
+</html>
